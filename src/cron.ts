@@ -48,14 +48,23 @@ export async function runHourlyRollup(env: Env, bucketHour: number): Promise<voi
   ]);
 }
 
-/** Backfills the N completed hours before `nowSeconds`. */
-export async function runBackfill(env: Env, hours: number, nowSeconds: number): Promise<number[]> {
+/** Backfills the N completed hours before `nowSeconds`, optionally the current partial hour. */
+export async function runBackfill(
+  env: Env,
+  hours: number,
+  nowSeconds: number,
+  includeCurrent = false,
+): Promise<number[]> {
   const currentHour = hourFloor(nowSeconds);
   const buckets: number[] = [];
   for (let i = hours; i >= 1; i--) {
     const bucket = currentHour - i * HOUR_SECONDS;
     await runHourlyRollup(env, bucket);
     buckets.push(bucket);
+  }
+  if (includeCurrent) {
+    await runHourlyRollup(env, currentHour);
+    buckets.push(currentHour);
   }
   return buckets;
 }

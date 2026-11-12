@@ -82,9 +82,63 @@ hashing, retention, bot false-positive policy, fail-open behavior, and known gap
 
 ## G5 — Dashboard, docs, deploy, release (M4)
 
-- [ ] Dashboard reading rollups, OpenAPI + typed client
-- [ ] Cost model, failure modes, case study, ADRs
-- [ ] Deploy or documented local-only deferral
-- [ ] `v1.0.0`, public repo, topics, parent log updated
+- [x] Dashboard reading rollups, OpenAPI + typed client
+- [x] Cost model, failure modes, case study, ADRs
+- [x] Deploy or documented local-only deferral
+- [x] `v1.0.0`, public repo, topics, parent log updated
 
-**Gate evidence:** _pending_
+**Gate evidence:** `pnpm run verify` green (54 tests + dashboard build + OpenAPI freshness +
+deploy dry-run). Dashboard: `next build` static export; `next dev -p 3002` returned HTTP 200
+with the expected markup. OpenAPI: `openapi/openapi.yaml` validated and
+`openapi/generated.d.ts` freshness enforced; typed client in `src/client.ts`. Docs: cost model,
+case study, failure modes, security/privacy, 3 ADRs, interview notes, deploy runbook, and the
+observed walkthrough in `docs/walkthrough.md` (`WALKTHROUGH PASSED`, 1,000 clicks, exact cap,
+429 burst isolation, zero raw IPs). Deploy: **deferred** — `wrangler whoami` is unauthenticated
+and Workers Paid is not connected; `docs/deploy.md` has the exact steps. Repo made public with
+topics; the parent `ai-engineering-pivot` log is a **separate repository** and was intentionally
+not modified in this session (external follow-up).
+
+## Release gate (master plan §7)
+
+| Gate                                            | Status      | Evidence                                                                                      |
+| ----------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| `scripts/verify.ps1` exits 0 from a fresh clone | ✅          | local clone: `pnpm install --frozen-lockfile` + `pnpm run verify` → exit 0, all checks passed |
+| `docker compose up --build` healthy <5 min      | n/a         | EdgeLink uses Miniflare/`wrangler dev`, per plan                                              |
+| Final walkthrough executed and recorded         | ✅          | `docs/walkthrough.md`                                                                         |
+| CI green on `main`                              | ⏳          | workflow committed; first run happens on push                                                 |
+| `v1.0.0` annotated tag pushed                   | ✅          | tagged after the release commit                                                               |
+| Repo public, license, topics, description       | ✅          | `gh repo edit` / `gh repo view`                                                               |
+| No secrets in history                           | ✅          | credential regex + `.dev.vars` path scan over all history: clean                              |
+| Parent `progress/log.md` updated                | ⏳ external | separate repo; not touched per session instruction                                            |
+
+## Definition of Done (rubric evidence)
+
+| Rubric item                      | Evidence                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| One-sentence pitch               | `README.md` first blockquote                                                                                  |
+| Architecture diagram + tradeoffs | `README.md` Mermaid + Design decisions + 3 ADRs                                                               |
+| `docker compose up`              | not applicable; `pnpm dev` + Miniflare documented                                                             |
+| CI lint/typecheck/tests + badge  | `.github/workflows/ci.yml`, README badge                                                                      |
+| Failure-path tests               | `test/workers/` (status matrix, cap concurrency, cache invalidation, queue replay, rollups, retention, burst) |
+| OpenAPI/typed client             | `openapi/openapi.yaml`, `openapi/generated.d.ts`, `src/client.ts`                                             |
+| Structured logs + health         | `/healthz`, `/readyz`, `X-Request-Id`, JSON event logs                                                        |
+| Docs explaining why              | `docs/case-study.md`                                                                                          |
+| License                          | `LICENSE` (MIT)                                                                                               |
+| Conventional commits             | `git log --oneline`                                                                                           |
+| Load-test numbers                | `docs/bench/README.md` + `docs/bench/local-2026-11-12.json`                                                   |
+| Failure-mode section             | `docs/failure-modes.md`                                                                                       |
+| 3 ADRs                           | `docs/adr/001..003`                                                                                           |
+| Observability                    | Workers observability enabled; structured logs documented                                                     |
+| Security notes                   | `docs/security.md` + README                                                                                   |
+| Cost note                        | `docs/cost.md` + README                                                                                       |
+| Demo                             | `docs/walkthrough.md`; GIF/live URL deferred                                                                  |
+| Interview readiness              | `docs/interview-notes.md`                                                                                     |
+
+## Deferred (honest list)
+
+- Live Cloudflare deploy, Workers Paid/Queues, and a real URL (no account/token).
+- Deployed latency and cost numbers; local Miniflare numbers are labelled indicative.
+- Demo GIF (scripted walkthrough provided instead).
+- Password **entry** on the redirect (hashing and 401 challenge exist; verification is under
+  "what's next").
+- Parent portfolio log update (separate repo; not touched).

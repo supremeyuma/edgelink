@@ -1,0 +1,415 @@
+openapi: 3.1.0
+info:
+  title: EdgeLink API
+  version: 1.0.0
+  description: >
+    Edge-deployed short links with click analytics. Admin routes require a bearer token.
+    Redirects are public. Analytics reads hourly rollups, never raw events.
+servers:
+  - url: http://127.0.0.1:8787
+    description: Local Miniflare
+security:
+  - bearerAuth: []
+tags:
+  - name: admin
+  - name: analytics
+  - name: redirect
+paths:
+  /healthz:
+    get:
+      tags: [redirect]
+      summary: Liveness probe
+      security: []
+      responses:
+        "200":
+          description: Worker is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+  /readyz:
+    get:
+      tags: [redirect]
+      summary: Readiness probe (D1 + KV)
+      security: []
+      responses:
+        "200":
+          description: Dependencies reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+        "503":
+          description: Dependency failure
+  /robots.txt:
+    get:
+      tags: [redirect]
+      summary: Disallow crawling of the short-link host
+      security: []
+      responses:
+        "200":
+          description: robots text
+          content:
+            text/plain:
+              schema:
+                type: string
+  /v1/links:
+    get:
+      tags: [admin]
+      summary: List links
+      responses:
+        "200":
+          description: All links, newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [admin]
+      summary: Create a short link
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLinkRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: Slug already exists
+  /v1/links/{slug}:
+    parameters:
+      - $ref: "#/components/parameters/Slug"
+    get:
+      tags: [admin]
+      summary: Get a link
+      responses:
+        "200":
+          description: Link detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [admin]
+      summary: Update target, expiry, or active state (bumps version)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLinkRequest"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LinkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [admin]
+      summary: Soft-delete a link
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/links/{slug}/analytics:
+    parameters:
+      - $ref: "#/components/parameters/Slug"
+      - name: days
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 400
+          default: 30
+    get:
+      tags: [analytics]
+      summary: Rollup-based analytics for a link
+      responses:
+        "200":
+          description: Totals, daily series, referrers, devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Analytics"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/admin/backfill:
+    post:
+      tags: [admin]
+      summary: Recompute the last N completed hours
+      parameters:
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 720
+            default: 24
+      responses:
+        "200":
+          description: Backfill accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, hours, buckets]
+                properties:
+                  ok:
+                    type: boolean
+                  hours:
+                    type: integer
+                  buckets:
+                    type: array
+                    items:
+                      type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /{slug}:
+    parameters:
+      - $ref: "#/components/parameters/Slug"
+    get:
+      tags: [redirect]
+      summary: Redirect to the target
+      security: []
+      responses:
+        "302":
+          description: Redirect
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+            X-Cache:
+              schema:
+                type: string
+                enum: [HIT, MISS, NEGATIVE]
+        "401":
+          description: Password-protected link
+          headers:
+            WWW-Authenticate:
+              schema:
+                type: string
+        "404":
+          description: Unknown slug
+        "410":
+          description: Expired, capped, or deleted
+        "429":
+          description: Rate limited
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-zA-Z0-9_-]{3,32}$"
+  responses:
+    Unauthorized:
+      description: Missing or invalid admin token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Validation failure
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Unknown slug
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    Link:
+      type: object
+      required: [id, slug, target, clicks, has_password, active, version, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        target:
+          type: string
+          format: uri
+        owner_id:
+          type: [string, "null"]
+        expires_at:
+          type: [integer, "null"]
+          description: Unix seconds
+        max_clicks:
+          type: [integer, "null"]
+        clicks:
+          type: integer
+        has_password:
+          type: boolean
+        active:
+          type: boolean
+        version:
+          type: integer
+        created_at:
+          type: integer
+    LinkResponse:
+      type: object
+      required: [link]
+      properties:
+        link:
+          $ref: "#/components/schemas/Link"
+        slug:
+          type: string
+        short_url:
+          type: string
+          format: uri
+    LinkList:
+      type: object
+      required: [links]
+      properties:
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/Link"
+    CreateLinkRequest:
+      type: object
+      required: [target]
+      properties:
+        target:
+          type: string
+          format: uri
+          pattern: "^https?://"
+        slug:
+          type: string
+          pattern: "^[a-zA-Z0-9_-]{3,32}$"
+        expires_at:
+          type: [integer, "null"]
+        max_clicks:
+          type: [integer, "null"]
+          minimum: 1
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+    UpdateLinkRequest:
+      type: object
+      minProperties: 1
+      properties:
+        target:
+          type: string
+          format: uri
+        expires_at:
+          type: [integer, "null"]
+        active:
+          type: boolean
+    SeriesPoint:
+      type: object
+      required: [day, clicks, uniques, bots]
+      properties:
+        day:
+          type: string
+          format: date
+        clicks:
+          type: integer
+        uniques:
+          type: integer
+        bots:
+          type: integer
+    NamedCount:
+      type: object
+      required: [name, clicks]
+      properties:
+        name:
+          type: string
+        clicks:
+          type: integer
+    Analytics:
+      type: object
+      required: [slug, days, from, to, totals, series, top_referrers, device_split]
+      properties:
+        slug:
+          type: string
+        days:
+          type: integer
+        from:
+          type: integer
+        to:
+          type: integer
+        totals:
+          type: object
+          required: [clicks, uniques, bots, bot_share]
+          properties:
+            clicks:
+              type: integer
+            uniques:
+              type: integer
+            bots:
+              type: integer
+            bot_share:
+              type: number
+              minimum: 0
+              maximum: 1
+        series:
+          type: array
+          items:
+            $ref: "#/components/schemas/SeriesPoint"
+        top_referrers:
+          type: array
+          items:
+            $ref: "#/components/schemas/NamedCount"
+        device_split:
+          type: array
+          items:
+            $ref: "#/components/schemas/NamedCount"
