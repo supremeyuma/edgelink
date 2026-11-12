@@ -34,10 +34,16 @@ available.
 
 ## G2 — KV cache and invalidation (M1)
 
-- [ ] Versioned read-through cache, negative caching, invalidation
-- [ ] Cold/warm benchmark
+- [x] Versioned read-through cache, negative caching, invalidation
+- [x] Cold/warm benchmark
 
-**Gate evidence:** _pending_
+**Gate evidence:** `pnpm run verify` green (35 tests, 5 files). Cache tests prove a PATCH is
+visible on the next request (`link:v2:*` written synchronously by admin mutations), expired
+and capped links never redirect from cache, deletes invalidate, and negative entries are
+cleared on create. Benchmark in `docs/bench/README.md`: warm p95 9.9 ms / 100% `X-Cache: HIT`
+vs cold p95 475 ms (300 unique slugs, 20-way concurrency) on local Miniflare — labelled as
+indicative, not edge numbers. Deviation from the plan: Cloudflare KV rejects
+`expirationTtl` below 60 s, so the negative-cache window is 60 s, not 30 s.
 
 ## G3 — Analytics pipeline, rollups, retention (M2)
 

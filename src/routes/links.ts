@@ -12,6 +12,7 @@ import {
   updateLink,
 } from "../db/queries";
 import { toLinkDto } from "../db/types";
+import { clearNegative, writeThroughLink } from "../lib/cache";
 
 const links = new Hono<{ Bindings: Env }>();
 
@@ -140,6 +141,8 @@ links.post("/", async (c) => {
     passwordHash,
     createdAt: now,
   });
+  // A slug may have been negative-cached before it existed.
+  await clearNegative(c.env.LINKS_KV, row.slug);
 
   const url = new URL(c.req.url);
   return c.json(
@@ -175,12 +178,14 @@ links.patch("/:slug", async (c) => {
 
   const row = await updateLink(c.env.DB, c.req.param("slug"), parsed.value);
   if (!row) return c.json({ error: "not found" }, 404);
+  await writeThroughLink(c.env.LINKS_KV, row);
   return c.json({ link: toLinkDto(row) });
 });
 
 links.delete("/:slug", async (c) => {
-  const deleted = await softDeleteLink(c.env.DB, c.req.param("slug"));
-  if (!deleted) return c.json({ error: "not found" }, 404);
+  const row = await softDeleteLink(c.env.DB, c.req.param("slug"));
+  if (!row) return c.json({ error: "not found" }, 404);
+  await writeThroughLink(c.env.LINKS_KV, row);
   return c.body(null, 204);
 });
 

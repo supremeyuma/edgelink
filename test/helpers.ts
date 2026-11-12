@@ -15,6 +15,36 @@ export async function resetDb(): Promise<void> {
     testEnv.DB.prepare("DELETE FROM click_events"),
     testEnv.DB.prepare("DELETE FROM links"),
   ]);
+  await clearKv();
+}
+
+export async function clearKv(): Promise<void> {
+  let cursor: string | undefined;
+  do {
+    const page = await testEnv.LINKS_KV.list(cursor ? { cursor } : {});
+    for (const key of page.keys) {
+      await testEnv.LINKS_KV.delete(key.name);
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+}
+
+export async function waitFor<T>(
+  probe: () => Promise<T | null | undefined>,
+  timeoutMs = 2000,
+): Promise<T> {
+  const started = Date.now();
+  for (;;) {
+    const value = await probe();
+    if (value !== null && value !== undefined) return value;
+    if (Date.now() - started > timeoutMs) throw new Error("waitFor timed out");
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+}
+
+export async function getCachedVersion(slug: string): Promise<number | null> {
+  const pointer = await testEnv.LINKS_KV.get(`link:ptr:${slug}`);
+  return pointer === null ? null : Number(pointer);
 }
 
 export interface LinkState {
