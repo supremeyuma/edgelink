@@ -1,27 +1,39 @@
 import { Hono } from "hono";
 import type { ClickEvent, Env } from "./types";
 import { RateLimiter } from "./durable/rate-limiter";
+import healthRoutes from "./routes/health";
+import linkRoutes from "./routes/links";
+import redirectRoutes from "./routes/redirect";
 
 export { RateLimiter };
 
-const app = new Hono<{ Bindings: Env }>();
+type AppEnv = { Bindings: Env; Variables: { requestId: string } };
 
-app.get("/healthz", (c) => c.json({ status: "ok" }));
+const app = new Hono<AppEnv>();
 
-app.get("/readyz", async (c) => {
-  try {
-    await c.env.DB.prepare("SELECT 1").first();
-    await c.env.LINKS_KV.get("healthz");
-    return c.json({ status: "ready" });
-  } catch (error) {
-    console.error("readiness check failed", error);
-    return c.json({ status: "unavailable" }, 503);
-  }
+app.use("*", async (c, next) => {
+  const requestId = c.req.header("X-Request-Id") ?? crypto.randomUUID();
+  c.set("requestId", requestId);
+  c.header("X-Request-Id", requestId);
+  c.header("X-Content-Type-Options", "nosniff");
+  await next();
 });
 
-app.get("/robots.txt", (c) =>
-  c.text("User-agent: *\nDisallow: /\n", 200, { "Content-Type": "text/plain" }),
-);
+app.route("/", healthRoutes);
+app.route("/v1/links", linkRoutes);
+app.route("/", redirectRoutes);
+
+app.notFound((c) => {
+  if (c.req.path.startsWith("/v1/")) {
+    return c.json({ error: "not found" }, 404);
+  }
+  return c.body(null, 404, { "Cache-Control": "no-store", "X-Cache": "MISS" });
+});
+
+app.onError((error, c) => {
+  console.error("unhandled error", error);
+  return c.json({ error: "internal error" }, 500);
+});
 
 export default {
   fetch: app.fetch,

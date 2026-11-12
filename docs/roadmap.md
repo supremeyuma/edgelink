@@ -23,10 +23,14 @@ available.
 
 ## G1 — Redirect core + link management (M0)
 
-- [ ] D1 schema/migrations; admin link CRUD; atomic cap/expiry
-- [ ] Status-code matrix + cap concurrency tests
+- [x] D1 schema/migrations; admin link CRUD; atomic cap/expiry
+- [x] Status-code matrix + cap concurrency tests
 
-**Gate evidence:** _pending_
+**Gate evidence:** `pnpm run verify` green (28 tests, 4 files). Status matrix covers 302, 404,
+410 (expired/capped/deleted), 401 (admin + password), 400 (target/slug/patch), 409
+(duplicate). Ten concurrent requests against `max_clicks=5` produce exactly five 302s, five
+410s, and `clicks=5`; a further request stays 410 without incrementing. Redirects carry
+`Cache-Control: no-store`, `X-Cache: MISS`, and echo `X-Request-Id`.
 
 ## G2 — KV cache and invalidation (M1)
 
