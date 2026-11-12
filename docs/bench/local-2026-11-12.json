@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-11-12T17:44:27.603Z",
+  "runtime": "wrangler dev (Miniflare, local machine)",
+  "caveat": "Local numbers are indicative; not edge measurements.",
+  "config": {
+    "durationSeconds": 8,
+    "connections": 10,
+    "coldSamples": 300,
+    "coldConcurrency": 20
+  },
+  "cold": {
+    "samples": 300,
+    "p50Ms": 428.7986000000001,
+    "p95Ms": 475.34010000000035,
+    "p99Ms": 498.4917999999998,
+    "cacheHitRate": 0,
+    "statuses": {
+      "302": 300
+    }
+  },
+  "warm": {
+    "slug": "bw-mwdu7trn",
+    "autocannon": {
+      "requestsPerSecond": 314.63,
+      "p50Ms": 30,
+      "p90Ms": 39,
+      "p99Ms": 50,
+      "errors": 0
+    },
+    "probe": {
+      "samples": 100,
+      "p50Ms": 6.665199999999459,
+      "p95Ms": 9.850800000000163,
+      "p99Ms": 17.88880000000063,
+      "cacheHitRate": 1,
+      "statuses": {
+        "302": 100
+      }
+    }
+  }
+}

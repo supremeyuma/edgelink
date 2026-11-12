@@ -26,6 +26,7 @@
     "@cloudflare/vitest-plugin": "1.8.1",
     "@cloudflare/workers-types": "^4.20250101.0",
     "@eslint/js": "^9.0.0",
+    "@types/autocannon": "^7.12.7",
     "@types/node": "^22.0.0",
     "autocannon": "^8.0.0",
     "eslint": "^9.0.0",
