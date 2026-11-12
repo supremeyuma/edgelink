@@ -34,6 +34,12 @@ jobs:
       - name: Typecheck
         run: pnpm exec tsc --noEmit
 
+      - name: OpenAPI check
+        run: pnpm exec tsx scripts/validate-openapi.ts
+
+      - name: Dashboard build
+        run: pnpm --filter edgelink-dashboard build
+
       - name: Tests
         run: pnpm exec vitest run
 

@@ -6,18 +6,24 @@
   "packageManager": "pnpm@12.18.0",
   "description": "Edge-deployed short-link service with click analytics that stay accurate under abuse, bots, and burst traffic.",
   "scripts": {
-    "dev": "wrangler dev --port 8787",
+    "dev": "wrangler dev --port 8787 --test-scheduled",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "openapi:types": "openapi-typescript openapi/openapi.yaml -o openapi/generated.d.ts",
+    "openapi:check": "tsx scripts/validate-openapi.ts",
+    "dashboard:build": "pnpm --filter edgelink-dashboard build",
     "test": "vitest run",
     "test:watch": "vitest",
     "migrate:local": "wrangler d1 migrations apply edgelink --local",
     "bench": "tsx scripts/bench.ts",
     "backfill": "tsx scripts/backfill.ts",
     "seed": "tsx scripts/seed.ts",
+    "load-clicks": "tsx scripts/load-clicks.ts",
+    "burst": "tsx scripts/burst.ts",
+    "walkthrough": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/walkthrough.ps1",
     "verify": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify.ps1"
   },
   "dependencies": {
@@ -38,6 +44,7 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.0.0",
     "vitest": "^4.1.0",
-    "wrangler": "^4.0.0"
+    "wrangler": "^4.0.0",
+    "yaml": "^2.9.1"
   }
 }

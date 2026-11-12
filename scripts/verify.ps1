@@ -13,6 +13,8 @@ function Invoke-Step {
 Invoke-Step "format" { pnpm exec prettier --check . }
 Invoke-Step "lint" { pnpm exec eslint . }
 Invoke-Step "typecheck" { pnpm exec tsc --noEmit }
+Invoke-Step "openapi" { pnpm exec tsx scripts/validate-openapi.ts }
+Invoke-Step "dashboard" { pnpm --filter edgelink-dashboard build }
 Invoke-Step "tests" { pnpm exec vitest run }
 Invoke-Step "deploy dry-run" { pnpm exec wrangler deploy --dry-run --outdir dist }
 
