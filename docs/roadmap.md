@@ -105,7 +105,7 @@ not modified in this session (external follow-up).
 | `scripts/verify.ps1` exits 0 from a fresh clone | ✅          | local clone: `pnpm install --frozen-lockfile` + `pnpm run verify` → exit 0, all checks passed |
 | `docker compose up --build` healthy <5 min      | n/a         | EdgeLink uses Miniflare/`wrangler dev`, per plan                                              |
 | Final walkthrough executed and recorded         | ✅          | `docs/walkthrough.md`                                                                         |
-| CI green on `main`                              | ⏳          | workflow committed; first run happens on push                                                 |
+| CI green on `main`                              | ✅          | runs 43280012462 (`v1.0.0`) and 43280744770 (deploy fix) succeeded                            |
 | `v1.0.0` annotated tag pushed                   | ✅          | tagged after the release commit                                                               |
 | Repo public, license, topics, description       | ✅          | `gh repo edit` / `gh repo view`                                                               |
 | No secrets in history                           | ✅          | credential regex + `.dev.vars` path scan over all history: clean                              |
