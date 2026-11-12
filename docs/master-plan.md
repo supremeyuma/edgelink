@@ -10,22 +10,23 @@ with green CI, tests, a reproducible walkthrough, and pushed commits.
 
 ## 1. What gets built, in what order
 
-| Order | Repo | Plan file | Spec | Working days (agent) | Hard external dependencies |
-|---|---|---|---|---|---|
-| 1 | `hookrelay` | `execution/01-hookrelay-plan.md` | `projects/p1-hookrelay.md` | 18–22 | Docker, GitHub |
-| 2 | `statusbeam` | `execution/02-statusbeam-plan.md` | `projects/t1-statusbeam.md` | 20–24 | Docker, GitHub, Playwright browsers |
-| 3 | `evalgate` | `execution/03-evalgate-plan.md` | `projects/p2-evalgate.md` | 16–20 | Docker, GitHub, optional LLM API key |
-| 4 | `edgelink` (stretch) | `execution/04-edgelink-plan.md` | `projects/t2-edgelink.md` | 10–12 | Cloudflare account (optional), Docker for `act` only |
+| Order | Repo                 | Plan file                         | Spec                        | Working days (agent) | Hard external dependencies                           |
+| ----- | -------------------- | --------------------------------- | --------------------------- | -------------------- | ---------------------------------------------------- |
+| 1     | `hookrelay`          | `execution/01-hookrelay-plan.md`  | `projects/p1-hookrelay.md`  | 18–22                | Docker, GitHub                                       |
+| 2     | `statusbeam`         | `execution/02-statusbeam-plan.md` | `projects/t1-statusbeam.md` | 20–24                | Docker, GitHub, Playwright browsers                  |
+| 3     | `evalgate`           | `execution/03-evalgate-plan.md`   | `projects/p2-evalgate.md`   | 16–20                | Docker, GitHub, optional LLM API key                 |
+| 4     | `edgelink` (stretch) | `execution/04-edgelink-plan.md`   | `projects/t2-edgelink.md`   | 10–12                | Cloudflare account (optional), Docker for `act` only |
 
 **Order is mandatory.** Do not work on two repos in the same day. Do not start repo N+1
 until repo N has passed its release gate (§7).
 
 Why this order:
+
 1. HookRelay establishes Python, async, Postgres/Redis, testing, CI, and reliability
    patterns that EvalGate reuses.
 2. StatusBeam proves TypeScript backend depth and is the highest-volume keyword pair.
 3. EvalGate is the flagship and benefits from the Python foundations; it is treated as the
-   last *required* artifact.
+   last _required_ artifact.
 4. EdgeLink is an explicit stretch. **Start it only if EvalGate is tagged `v1.0.0` and at
    least 10 working days remain in the budget.** If not, record it as deferred in
    `progress/log.md` and stop.
@@ -103,20 +104,21 @@ SQLite to "keep moving" (EvalGate unit tests may use SQLite only where its plan 
 
 These are the only steps an agent must not fake. Batch them before starting.
 
-| Checkpoint | Needed by | Fallback if unavailable |
-|---|---|---|
-| `gh auth login` with `repo` + `workflow` scopes | Phase 0 of every repo | Local commits; record blocker; do not invent a remote |
-| Docker Desktop running | HookRelay Phase 1 | Stop; fix Docker |
-| Cloudflare account + API token; **Workers Paid** for Queues | EdgeLink only | Local Miniflare build; mark deploy gate deferred in README |
-| LLM provider API key (OpenAI-compatible or Anthropic) | EvalGate live demo only | Ship with `--mock`; label all demo numbers as mock; never commit keys |
-| VPS / Fly.io account for live demo URL | Release phase | Local demo GIF via `vhs`; mark live URL deferred |
-| Demo video recording / Marketplace listing publish | Release phase | Provide a scripted `.tape`/`scripts/demo.*`; leave the upload as a 1-step human task |
+| Checkpoint                                                  | Needed by               | Fallback if unavailable                                                              |
+| ----------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------ |
+| `gh auth login` with `repo` + `workflow` scopes             | Phase 0 of every repo   | Local commits; record blocker; do not invent a remote                                |
+| Docker Desktop running                                      | HookRelay Phase 1       | Stop; fix Docker                                                                     |
+| Cloudflare account + API token; **Workers Paid** for Queues | EdgeLink only           | Local Miniflare build; mark deploy gate deferred in README                           |
+| LLM provider API key (OpenAI-compatible or Anthropic)       | EvalGate live demo only | Ship with `--mock`; label all demo numbers as mock; never commit keys                |
+| VPS / Fly.io account for live demo URL                      | Release phase           | Local demo GIF via `vhs`; mark live URL deferred                                     |
+| Demo video recording / Marketplace listing publish          | Release phase           | Provide a scripted `.tape`/`scripts/demo.*`; leave the upload as a 1-step human task |
 
 ---
 
 ## 4. Operating conventions (all repos)
 
 ### Branches
+
 - `main` is always green.
 - Work each phase on `phase/N-short-name` (e.g. `phase/2-ingest-idempotency`).
 - At a phase gate, merge to `main` with `--no-ff` so the phase boundary is visible:
@@ -129,6 +131,7 @@ These are the only steps an agent must not fake. Batch them before starting.
 - Never force-push `main`. Never rewrite commits that are already pushed.
 
 ### Commits
+
 - Conventional Commits: `feat(api): ...`, `fix(worker): ...`, `test(ingest): ...`,
   `docs(adr): ...`, `ci: ...`, `chore: ...`, `refactor: ...`, `perf: ...`.
 - **Commit on every meaningful change**: one logical change + its tests + any doc update.
@@ -140,6 +143,7 @@ These are the only steps an agent must not fake. Batch them before starting.
   `Verified: uv run pytest tests/unit -q (42 passed)`.
 
 ### Phase protocol (apply to every phase in every repo)
+
 1. **Initiate** — create the branch; tick the phase's `docs/roadmap.md` section; re-read the
    matching spec section; list the acceptance tests before writing code.
 2. **Build** — implement in small commits; write the hard-path test immediately after (or
@@ -151,6 +155,7 @@ These are the only steps an agent must not fake. Batch them before starting.
 5. **Push** — merge to `main`, tag the phase, push commits and tags.
 
 ### Test bar
+
 - Core business modules: **≥80% line coverage**; do not chase 100%.
 - Every phase gate runs the **entire** suite, not just new tests.
 - Failure paths are mandatory: timeout, retry, malformed input, auth rejection, duplicate
@@ -163,6 +168,7 @@ These are the only steps an agent must not fake. Batch them before starting.
   scripts may retry).
 
 ### CI requirements (every repo)
+
 - `.github/workflows/ci.yml` on `push` + `pull_request` to `main`.
 - Steps: dependency install (cached) → format check → lint → typecheck → tests with
   coverage → production Docker build (where applicable).
@@ -172,6 +178,7 @@ These are the only steps an agent must not fake. Batch them before starting.
   conditional (`if: secrets.X != ''`), and never required for the green badge.
 
 ### Documentation requirements (every repo)
+
 - `README.md` from `templates/repo-readme-template.md`: pitch, Mermaid architecture,
   measured results, run instructions, design decisions, security notes, what's next.
 - `docs/adr/NNN-title.md` from `templates/adr-template.md`; 3 ADRs minimum.
@@ -204,32 +211,33 @@ exits 0 **and** the phase-specific acceptance checks in the project plan pass.
 
 Every repo's `docs/roadmap.md` must end with this table filled in with file paths/URLs:
 
-| Rubric item | Evidence artifact |
-|---|---|
-| One-sentence pitch | `README.md` first blockquote |
-| Architecture diagram + 3–5 tradeoffs | `README.md` Mermaid + Design decisions section |
-| `docker compose up` works | `README.md` Run it; verified from a clean clone |
-| CI lint/typecheck/tests + badge | `.github/workflows/ci.yml`, badge URL, last green run |
-| Failure-path tests | `tests/` names listed in `docs/roadmap.md` |
-| OpenAPI/typed client | `/openapi.json` + checked-in spec or generated client |
-| Structured logs + `/healthz` + `/readyz` | code paths + sample log line in README |
-| Docs page/post explaining *why* | `docs/case-study.md` |
-| License | `LICENSE` |
-| Conventional commits, clean history | `git log --oneline` |
-| Load-test numbers | `load/results/*` + README table with hardware |
-| Failure-mode section | `docs/failure-modes.md` |
-| 3 ADRs | `docs/adr/001..003` |
-| Observability | OTel trace screenshot/output + metrics list |
-| Security notes | README Security notes + `docs/security.md` |
-| Cost note | README cost table (per 1k/10k/100k units) |
-| Demo | live URL or `docs/demo.gif` |
-| Interview readiness | `docs/interview-notes.md` (data model sketch, 3 failure modes) |
+| Rubric item                              | Evidence artifact                                              |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| One-sentence pitch                       | `README.md` first blockquote                                   |
+| Architecture diagram + 3–5 tradeoffs     | `README.md` Mermaid + Design decisions section                 |
+| `docker compose up` works                | `README.md` Run it; verified from a clean clone                |
+| CI lint/typecheck/tests + badge          | `.github/workflows/ci.yml`, badge URL, last green run          |
+| Failure-path tests                       | `tests/` names listed in `docs/roadmap.md`                     |
+| OpenAPI/typed client                     | `/openapi.json` + checked-in spec or generated client          |
+| Structured logs + `/healthz` + `/readyz` | code paths + sample log line in README                         |
+| Docs page/post explaining _why_          | `docs/case-study.md`                                           |
+| License                                  | `LICENSE`                                                      |
+| Conventional commits, clean history      | `git log --oneline`                                            |
+| Load-test numbers                        | `load/results/*` + README table with hardware                  |
+| Failure-mode section                     | `docs/failure-modes.md`                                        |
+| 3 ADRs                                   | `docs/adr/001..003`                                            |
+| Observability                            | OTel trace screenshot/output + metrics list                    |
+| Security notes                           | README Security notes + `docs/security.md`                     |
+| Cost note                                | README cost table (per 1k/10k/100k units)                      |
+| Demo                                     | live URL or `docs/demo.gif`                                    |
+| Interview readiness                      | `docs/interview-notes.md` (data model sketch, 3 failure modes) |
 
 ---
 
 ## 7. Release gate (must pass before the next repo starts)
 
 For repo N:
+
 - [ ] `scripts/verify.ps1` exits 0 from a **fresh clone** (`git clone` into a temp dir).
 - [ ] `docker compose up --build` reaches healthy state in <5 minutes; README run steps
       are exact, including required env vars.
@@ -257,7 +265,7 @@ The goal is minimal human intervention. Resolve ambiguity yourself using these r
 3. **Blocked >30 minutes on an environment issue:** try one documented alternative, then
    stop that phase, commit the work in a green state, and report the exact blocker.
    Do not disable tests or CI to proceed.
-4. **Load target unreachable on the host:** publish the *actual reproducible* number and
+4. **Load target unreachable on the host:** publish the _actual reproducible_ number and
    the bottleneck. Never publish a number you cannot reproduce.
 5. **LLM/API quota:** switch to the mock/recorded provider. Mark any derived calibration or
    cost numbers as mock-derived.

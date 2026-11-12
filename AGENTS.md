@@ -44,10 +44,10 @@ explicitly requested all three remaining projects in parallel, so proceed — bu
 Two other agents are building `statusbeam` and `evalgate` on the same machine, and HookRelay
 may be running. EdgeLink uses Miniflare/`wrangler dev`, not the shared Postgres/Redis stack:
 
-| Service | Port |
-|---|---|
+| Service                 | Port     |
+| ----------------------- | -------- |
 | Worker (`wrangler dev`) | **8787** |
-| Dashboard | **3002** |
+| Dashboard               | **3002** |
 
 - Do not start Postgres or Redis for this project.
 - Do not run Docker except for optional `act` checks.

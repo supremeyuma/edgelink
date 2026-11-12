@@ -30,16 +30,17 @@ flowchart LR
 ```
 
 Three to five bullets on **why** this shape:
+
 - Chose X over Y because … (tradeoff)
 - Failure mode handled by …
 
 ## Measured results
 
-| Metric | Value | How |
-|---|---|---|
+| Metric            | Value       | How                             |
+| ----------------- | ----------- | ------------------------------- |
 | Ingest throughput | 1,000 req/s | `k6 run load/ingest.js`, 4 vCPU |
-| p95 latency | 41 ms | same run |
-| Test coverage | 87% | `pytest --cov` |
+| p95 latency       | 41 ms       | same run                        |
+| Test coverage     | 87%         | `pytest --cov`                  |
 
 Do not publish numbers you can't reproduce.
 

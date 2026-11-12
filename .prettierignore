@@ -1,0 +1,8 @@
+node_modules
+.wrangler
+dist
+coverage
+pnpm-lock.yaml
+dashboard/.next
+dashboard/out
+openapi/generated.d.ts

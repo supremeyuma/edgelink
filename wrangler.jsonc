@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "edgelink",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-01-01",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "edgelink",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "kv_namespaces": [{ "binding": "LINKS_KV", "id": "00000000000000000000000000000000" }],
+  "queues": {
+    "producers": [{ "binding": "CLICKS", "queue": "edgelink-clicks" }],
+    "consumers": [
+      {
+        "queue": "edgelink-clicks",
+        "max_batch_size": 100,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "edgelink-clicks-dlq",
+      },
+    ],
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiter"] }],
+  "triggers": { "crons": ["0 * * * *", "15 3 * * *"] },
+}
