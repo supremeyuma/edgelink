@@ -1,7 +1,6 @@
 name: Deploy
 
-on:
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
   deploy:
@@ -26,20 +25,14 @@ jobs:
           pnpm exec tsc --noEmit
           pnpm exec vitest run
 
-      - name: Apply remote migrations
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      - name: Deploy (skips without a token)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm exec wrangler d1 migrations apply edgelink --remote
-
-      - name: Deploy worker
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm exec wrangler deploy
-
-      - name: Report deferred deploy
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
-        run: echo "CLOUDFLARE_API_TOKEN is not configured; deploy skipped (CI stays green)."
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN is not configured; deploy skipped."
+            exit 0
+          fi
+          pnpm exec wrangler d1 migrations apply edgelink --remote
+          pnpm exec wrangler deploy
