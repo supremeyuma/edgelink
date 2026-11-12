@@ -11,8 +11,41 @@ import {
   type CachedLink,
 } from "../lib/cache";
 import { buildClickEvent } from "../lib/click";
+import { getClientIp, hashIp } from "../lib/ip";
+import type { RateLimitResult } from "../durable/rate-limiter";
 
 const redirect = new Hono<{ Bindings: Env }>();
+
+interface RateLimiterStub {
+  check(nowMs?: number): Promise<RateLimitResult>;
+}
+
+/**
+ * Per-IP token bucket. Fail-open: if the Durable Object is unavailable, the
+ * redirect still works and the failure is logged. A rate-limited request is
+ * rejected before any lookup or click counting.
+ */
+redirect.use("/:slug", async (c, next) => {
+  try {
+    const ipHash = await hashIp(getClientIp(c.req.raw), c.env.IP_HASH_SALT);
+    const stub = c.env.RATE_LIMITER.get(
+      c.env.RATE_LIMITER.idFromName(ipHash),
+    ) as unknown as RateLimiterStub;
+    const result = await stub.check(Date.now());
+    if (!result.allowed) {
+      return c.body(null, 429, {
+        "Retry-After": String(result.retryAfter),
+        "X-RateLimit-Limit": c.env.RATE_LIMIT_PER_MIN ?? "60",
+        "X-RateLimit-Remaining": "0",
+        "Cache-Control": "no-store",
+        "X-Cache": "MISS",
+      });
+    }
+  } catch (error) {
+    console.error(JSON.stringify({ event: "rate_limiter.fail_open", message: String(error) }));
+  }
+  await next();
+});
 
 type CacheState = "HIT" | "MISS" | "NEGATIVE";
 

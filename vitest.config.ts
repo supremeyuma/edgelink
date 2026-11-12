@@ -12,6 +12,8 @@ export default defineConfig({
         bindings: {
           ADMIN_TOKEN: "test-admin-token",
           IP_HASH_SALT: "test-ip-hash-salt",
+          RATE_LIMIT_PER_MIN: "60",
+          RATE_LIMIT_BURST: "30",
           ENVIRONMENT: "test",
           TEST_MIGRATIONS: migrations,
         },

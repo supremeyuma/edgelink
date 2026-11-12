@@ -57,6 +57,13 @@ describe("POST /v1/links", () => {
     }
   });
 
+  it("rejects blocklisted target domains", async () => {
+    for (const target of ["https://phishing.example/login", "https://a.malware.example/x"]) {
+      const res = await createLinkViaApi({ target });
+      expect(res.status).toBe(400);
+    }
+  });
+
   it("rejects duplicate slugs with 409", async () => {
     await createSlug("dupe");
     const res = await createLinkViaApi({ slug: "dupe", target: "https://example.org" });

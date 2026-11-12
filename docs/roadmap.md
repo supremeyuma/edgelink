@@ -59,6 +59,7 @@ the 30-day raw / 400-day rollup windows. Analytics API reads rollups only (a con
 event is ignored) and returns totals, daily series, top referrers, device split, and bot share.
 
 Plan deviations, recorded honestly:
+
 - Added `referrer_rollups` and `device_rollups` (migration `0002`) because the plan's
   `rollups` table cannot answer top-referrer/device queries without scanning raw events.
 - Workers-pool tests exercise producer (`buildClickEvent`) and consumer (`createMessageBatch`)
@@ -67,11 +68,17 @@ Plan deviations, recorded honestly:
 
 ## G4 — Abuse, bots, privacy (M3)
 
-- [ ] Durable Object token bucket, 429 + `Retry-After`
-- [ ] Bot heuristic, salted IP hashing, blocklist
-- [ ] Burst isolation and privacy tests
+- [x] Durable Object token bucket, 429 + `Retry-After`
+- [x] Bot heuristic, salted IP hashing, blocklist
+- [x] Burst isolation and privacy tests
 
-**Gate evidence:** _pending_
+**Gate evidence:** `pnpm run verify` green (54 tests, 8 files). A 500-request burst from
+`198.51.100.201` yields a bounded number of 302s and >400 `429`s with `Retry-After`; only the
+allowed requests increment `clicks`; a second IP is unaffected. The token-bucket test proves
+persistence and one-token-per-second refill with a fake clock. Privacy tests prove HMAC
+determinism per salt, salt sensitivity, no raw IP in a serialized event, platform-IP fallback,
+bot/device classification, and exact/subdomain target blocklisting. `docs/security.md` records
+hashing, retention, bot false-positive policy, fail-open behavior, and known gaps.
 
 ## G5 — Dashboard, docs, deploy, release (M4)
 
