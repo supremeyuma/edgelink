@@ -10,13 +10,16 @@ verified, not "written".
 - [x] MIT license, `.gitignore`, `.gitattributes`, `.editorconfig`
 - [x] Execution plan, spec, master plan, and agent instructions committed
 - [x] Private GitHub remote created and pushed
-- [ ] Tooling: pnpm, Hono, Wrangler config, D1/KV/Queues/DO bindings, Vitest workers pool,
+- [x] Tooling: pnpm, Hono, Wrangler config, D1/KV/Queues/DO bindings, Vitest workers pool,
       CI skeleton
-- [ ] `pnpm test`, `pnpm typecheck`, and `wrangler deploy --dry-run` green on the empty shell
-- [ ] `wrangler whoami` result recorded (account available or local-only)
+- [x] `pnpm test`, `pnpm typecheck`, and `wrangler deploy --dry-run` green on the empty shell
+- [x] `wrangler whoami` result recorded (account available or local-only)
 
-**Evidence:** repository bootstrapped; remote expected at
-<https://github.com/supremeyuma/edgelink>. Tooling evidence pending.
+**Evidence:** `pnpm run verify` passes: prettier check, eslint, `tsc --noEmit`, Vitest workers
+pool (3 health tests), and `wrangler deploy --dry-run` (63.15 KiB upload, D1/KV/Queue/DO
+bindings resolved). `wrangler whoami` → **not authenticated**; build is local-only
+(Miniflare/`wrangler dev`), deploy gate deferred until a Cloudflare account + Workers Paid is
+available.
 
 ## G1 — Redirect core + link management (M0)
 

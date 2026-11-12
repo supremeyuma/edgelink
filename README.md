@@ -3,7 +3,8 @@
 > An edge-deployed short-link service with click analytics that stay accurate under abuse,
 > bots, and burst traffic.
 
-**Status:** bootstrapped — build has not started. The execution plan is in this repo.
+**Status:** Phase G0 complete — tooling, bindings, tests, and CI are green. Build continues in
+`docs/roadmap.md`.
 
 **Stack:** TypeScript · Hono · Cloudflare Workers · Wrangler · D1 · KV · Queues · Cron ·
 Durable Objects · Vitest workers pool · Next.js dashboard

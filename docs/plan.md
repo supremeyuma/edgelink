@@ -47,6 +47,7 @@ request ──▶ Worker (Hono)
 ```
 
 Rules baked into the plan:
+
 - The redirect path never awaits analytics writes; the click goes through the queue via
   `ctx.waitUntil`.
 - Click events carry a UUID generated at the edge; the consumer dedupes on it, so queue
@@ -105,27 +106,37 @@ edgelink/
      "main": "src/index.ts",
      "compatibility_date": "2026-01-01",
      "observability": { "enabled": true },
-     "d1_databases": [{ "binding": "DB", "database_name": "edgelink",
-                        "database_id": "<from wrangler d1 create>",
-                        "migrations_dir": "migrations" }],
+     "d1_databases": [
+       {
+         "binding": "DB",
+         "database_name": "edgelink",
+         "database_id": "<from wrangler d1 create>",
+         "migrations_dir": "migrations",
+       },
+     ],
      "kv_namespaces": [{ "binding": "LINKS_KV", "id": "<from wrangler kv namespace create>" }],
      "queues": {
        "producers": [{ "binding": "CLICKS", "queue": "edgelink-clicks" }],
-       "consumers": [{ "queue": "edgelink-clicks", "max_batch_size": 100,
-                       "max_batch_timeout": 5, "max_retries": 5,
-                       "dead_letter_queue": "edgelink-clicks-dlq" }]
+       "consumers": [
+         {
+           "queue": "edgelink-clicks",
+           "max_batch_size": 100,
+           "max_batch_timeout": 5,
+           "max_retries": 5,
+           "dead_letter_queue": "edgelink-clicks-dlq",
+         },
+       ],
      },
-     "durable_objects": { "bindings": [{ "name": "RATE_LIMITER",
-                                        "class_name": "RateLimiter" }] },
+     "durable_objects": { "bindings": [{ "name": "RATE_LIMITER", "class_name": "RateLimiter" }] },
      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RateLimiter"] }],
-     "triggers": { "crons": ["0 * * * *", "15 3 * * *"] }
+     "triggers": { "crons": ["0 * * * *", "15 3 * * *"] },
    }
    ```
    For local-only development, placeholder IDs work with `--local`; note this in the README.
 5. `vitest.config.ts` with `defineWorkersConfig` + `poolOptions.workers.wrangler.configPath`
    and `miniflare.d1Databases/kvNamespaces/durableObjects/queueConsumers` as needed.
 6. CI: pnpm install, `tsc --noEmit`, eslint/prettier, `vitest run`, `wrangler deploy
-   --dry-run` (no credentials needed). Deploy workflow is separate and conditional on
+--dry-run` (no credentials needed). Deploy workflow is separate and conditional on
    `CLOUDFLARE_API_TOKEN`.
 7. Commit, create private remote, push.
 
@@ -137,6 +148,7 @@ edgelink/
 ## 3. Phase G1 — Redirect core + link management (M0, 2 days)
 
 ### Data model (migration 0001)
+
 ```sql
 CREATE TABLE links (
   id TEXT PRIMARY KEY,
@@ -167,6 +179,7 @@ CREATE TABLE rollups (
 ```
 
 ### Tasks
+
 1. **Admin auth:** `Authorization: Bearer <ADMIN_TOKEN>` (Worker secret / `.dev.vars`);
    constant-time comparison; `401` on missing/wrong.
 2. **Link API:**
@@ -201,6 +214,7 @@ CREATE TABLE rollups (
    blocklisted slug; password hash verify; `healthz`/`readyz`; `X-Request-Id` echo.
 
 ### Commits
+
 ```
 feat(db): links, click events, and rollups schema
 feat(api): admin link create/list/update/delete
@@ -217,8 +231,9 @@ test(redirect): status code matrix and cap concurrency
 ## 4. Phase G2 — KV cache and invalidation (M1, 2–3 days)
 
 ### Tasks
+
 1. **Cache key:** `link:v{version}:{slug}` → JSON `{id, target, expires_at, max_clicks,
-   clicks, active, password: bool}`; TTL 300s.
+clicks, active, password: bool}`; TTL 300s.
 2. **Read path:** KV get → hit: `X-Cache: HIT`, skip D1 except for the click counter? Do
    **not** trust a cached `clicks` for the cap; the cap decision must hit D1 atomically.
    Design: cache serves target/eligibility; the atomic `UPDATE ... RETURNING` is always
@@ -244,6 +259,7 @@ test(redirect): status code matrix and cap concurrency
    next request 404/410; capped link never served from cache as a successful redirect.
 
 ### Commits
+
 ```
 feat(cache): versioned kv read-through with warm-on-miss
 feat(cache): negative caching and invalidation on writes
@@ -259,6 +275,7 @@ test(cache): version bump, expiry, and delete invalidation
 ## 5. Phase G3 — Analytics pipeline, rollups, retention (M2, 3 days)
 
 ### Tasks
+
 1. **Click capture:** after a successful redirect, build
    ```ts
    { id: crypto.randomUUID(), link_id, ts: Math.floor(Date.now()/1000),
@@ -289,7 +306,7 @@ test(cache): version bump, expiry, and delete invalidation
    mismatches (do not auto-correct without an audit note).
 5. **Analytics API** (admin): `GET /v1/links/:slug/analytics?days=30` reads **rollups only**
    — totals, per-day series, top referrers, device split, bot share, unique visitors. Return
-    404 for unknown slug.
+   404 for unknown slug.
 6. **Tests:** 1,000 queued clicks across 3 links → exact rollup totals; duplicate message
    ids → no inflation; cron rerun → identical values; late-arriving event in a closed
    bucket (rerun backfill) corrects totals; retention deletes only old rows; analytics query
@@ -297,6 +314,7 @@ test(cache): version bump, expiry, and delete invalidation
    test).
 
 ### Commits
+
 ```
 feat(analytics): queue send on redirect with waitUntil
 feat(consumer): idempotent batch insert into d1
@@ -312,6 +330,7 @@ test(analytics): 1000-click exactness and replay safety
 ## 6. Phase G4 — Abuse, bots, privacy (M3, 2–3 days)
 
 ### Tasks
+
 1. **Rate limiter Durable Object** (`durable/rate-limiter.ts`): per-IP token bucket with
    `rate_per_min` and `burst` from env, state in DO storage (or in-memory with
    `blockConcurrencyWhile` for correctness across requests — DO is single-threaded per id,
@@ -337,6 +356,7 @@ test(analytics): 1000-click exactness and replay safety
    the password.
 
 ### Commits
+
 ```
 feat(abuse): durable object token bucket per ip
 feat(abuse): 429 with retry-after and bypass-safe redirects
@@ -353,6 +373,7 @@ redirect path when the DO errors (fail-open with a log, documented).
 ## 7. Phase G5 — Dashboard, docs, deploy, release (M4, 2–3 days)
 
 ### Tasks
+
 1. **Dashboard** (`dashboard/`, Next.js static export): link list, create/edit form, 30-day
    clicks chart (SVG, no heavy chart lib), top referrers, device split, bot share. Admin
    token entered in the UI and kept in `sessionStorage`; all reads from the analytics API.
@@ -368,7 +389,7 @@ redirect path when the DO errors (fail-open with a log, documented).
    ADRs: KV vs D1 for redirects, queue vs inline analytics, DO vs KV rate limiting.
 4. **Deploy (conditional):** `wrangler d1 create edgelink`, `wrangler kv namespace create`,
    `wrangler queues create`, fill IDs into `wrangler.jsonc`, `wrangler d1 migrations apply
-   edgelink --remote`, `wrangler deploy`; optional Pages deploy for the dashboard. If no
+edgelink --remote`, `wrangler deploy`; optional Pages deploy for the dashboard. If no
    account/token, keep the dry-run CI and mark the live URL deferred with exact steps.
 5. **Demo:** `scripts/walkthrough.ps1` + `docs/demo.gif` (scripted terminal capture); a live
    URL if deployed.
@@ -376,6 +397,7 @@ redirect path when the DO errors (fail-open with a log, documented).
    `d1`, `kv`, `edge`, `analytics`), update parent `progress/log.md`.
 
 ### Commits
+
 ```
 feat(dashboard): link list and 30-day analytics view
 feat(api): openapi spec and generated typed client
@@ -388,24 +410,24 @@ chore: release v1.0.0
 
 ## 8. Final walkthrough test
 
-| # | Action | Expected |
-|---|---|---|
-| 1 | `pnpm wrangler d1 migrations apply edgelink --local`; `pnpm dev` | Worker on `http://localhost:8787` |
-| 2 | Create link via admin token, target `https://example.com/a` | 201 + slug |
-| 3 | `curl -I /slug` | 302, `Location: https://example.com/a`, `X-Cache: MISS` |
-| 4 | Repeat | `X-Cache: HIT` |
-| 5 | PATCH target to `/b`; immediate request | 302 to `/b` (version bump, no stale) |
-| 6 | Set `expires_at` in the past; request | 410, and again 410 |
-| 7 | Set `max_clicks: 2`; request 3× | 302, 302, 410; `clicks=2` |
-| 8 | Seed 1,000 clicks across 3 links with mixed UAs/IPs | queued |
-| 9 | Trigger cron (`/__scheduled?cron=0+*+*+*+*` with `--test-scheduled` or `wrangler dev --test-scheduled`) | rollups exact; rerun identical |
-| 10 | Daily cron | old raw rows pruned; rollups retained |
-| 11 | Analytics API | totals match; uniques exclude bots; top referrers correct |
-| 12 | Burst 500 requests from one IP | 429 + `Retry-After`; other IP unaffected |
-| 13 | D1/log inspection | no raw IPs, no passwords, no tokens |
-| 14 | `pnpm test`, `pnpm typecheck`, `wrangler deploy --dry-run` | green |
-| 15 | Dashboard (if built) | shows 30-day chart and top referrers for the demo link |
-| 16 | Deploy (if account) | live redirect + analytics; record numbers |
+| #   | Action                                                                                                  | Expected                                                  |
+| --- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 1   | `pnpm wrangler d1 migrations apply edgelink --local`; `pnpm dev`                                        | Worker on `http://localhost:8787`                         |
+| 2   | Create link via admin token, target `https://example.com/a`                                             | 201 + slug                                                |
+| 3   | `curl -I /slug`                                                                                         | 302, `Location: https://example.com/a`, `X-Cache: MISS`   |
+| 4   | Repeat                                                                                                  | `X-Cache: HIT`                                            |
+| 5   | PATCH target to `/b`; immediate request                                                                 | 302 to `/b` (version bump, no stale)                      |
+| 6   | Set `expires_at` in the past; request                                                                   | 410, and again 410                                        |
+| 7   | Set `max_clicks: 2`; request 3×                                                                         | 302, 302, 410; `clicks=2`                                 |
+| 8   | Seed 1,000 clicks across 3 links with mixed UAs/IPs                                                     | queued                                                    |
+| 9   | Trigger cron (`/__scheduled?cron=0+*+*+*+*` with `--test-scheduled` or `wrangler dev --test-scheduled`) | rollups exact; rerun identical                            |
+| 10  | Daily cron                                                                                              | old raw rows pruned; rollups retained                     |
+| 11  | Analytics API                                                                                           | totals match; uniques exclude bots; top referrers correct |
+| 12  | Burst 500 requests from one IP                                                                          | 429 + `Retry-After`; other IP unaffected                  |
+| 13  | D1/log inspection                                                                                       | no raw IPs, no passwords, no tokens                       |
+| 14  | `pnpm test`, `pnpm typecheck`, `wrangler deploy --dry-run`                                              | green                                                     |
+| 15  | Dashboard (if built)                                                                                    | shows 30-day chart and top referrers for the demo link    |
+| 16  | Deploy (if account)                                                                                     | live redirect + analytics; record numbers                 |
 
 ---
 
@@ -429,6 +451,7 @@ chore: release v1.0.0
 ## 10. Cut order (timebox discipline)
 
 Cut from the bottom, in this order, recording each cut in `progress/log.md`:
+
 1. Dashboard extras → single table + sparkline.
 2. Deploy preview/dashboard hosting → local demo + dry-run CI.
 3. Bot heuristic → static UA list only, ASN omitted.
@@ -443,12 +466,12 @@ idempotency, rollup exactness, IP hashing, the 1,000-click test, CI.
 
 ## 11. Risks and fallbacks
 
-| Risk | Mitigation |
-|---|---|
-| No Cloudflare account / no Queues on free plan | Build and test locally with Miniflare; deploy gate deferred; README states the paid requirement |
-| KV eventual consistency confusing the demo | Versioned keys + immediate D1 authority for caps/expiry; test proves no stale success |
-| Queue local emulation differences | Workers-pool `createMessageBatch` tests + `wrangler dev` walkthrough; document the gap |
-| D1 write throughput under load | Batch inserts, chunk to 50, document the limit and the queue buffer |
-| DO hot key for a single abusive IP | Per-IP DO id; documented cost; fallback to KV approximation if DO unavailable |
-| Local benchmarks mistaken for edge numbers | Label local numbers explicitly; publish deployed numbers only when actually measured |
-| Cron not firing locally | `wrangler dev --test-scheduled` + `/__scheduled`; test `scheduled()` directly in the workers pool |
+| Risk                                           | Mitigation                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| No Cloudflare account / no Queues on free plan | Build and test locally with Miniflare; deploy gate deferred; README states the paid requirement   |
+| KV eventual consistency confusing the demo     | Versioned keys + immediate D1 authority for caps/expiry; test proves no stale success             |
+| Queue local emulation differences              | Workers-pool `createMessageBatch` tests + `wrangler dev` walkthrough; document the gap            |
+| D1 write throughput under load                 | Batch inserts, chunk to 50, document the limit and the queue buffer                               |
+| DO hot key for a single abusive IP             | Per-IP DO id; documented cost; fallback to KV approximation if DO unavailable                     |
+| Local benchmarks mistaken for edge numbers     | Label local numbers explicitly; publish deployed numbers only when actually measured              |
+| Cron not firing locally                        | `wrangler dev --test-scheduled` + `/__scheduled`; test `scheduled()` directly in the workers pool |

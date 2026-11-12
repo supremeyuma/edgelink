@@ -20,6 +20,7 @@ a different runtime skill from Node servers and a differentiator for platform ro
 ## Scope
 
 **In:**
+
 - Create/update/expire short links, custom slugs, optional password, max-click caps
 - `GET /:slug` → 302 with cached lookup; 404/410/429 paths
 - Click capture via `waitUntil`, no blocking the redirect
@@ -61,29 +62,34 @@ rollups(link_id, bucket_hour, clicks, uniques, bots)
 ## Milestones
 
 ### M0 — Edge skeleton (2 days)
+
 - [ ] Hono app + wrangler + D1 migrations + KV binding + CI deploy to preview
 - [ ] `GET /:slug` redirect from D1; health endpoint
 - [ ] Vitest with workers pool; one test per status code
 
 ### M1 — Performance + cache (3 days)
+
 - [ ] KV read-through cache with negative caching for 404s
 - [ ] Cache invalidation on link update/delete (versioned key)
 - [ ] Benchmark cold/warm; document p95 and cache hit rate
 - [ ] Test: expired link returns 410 without cache poisoning; capped link stops
 
 ### M2 — Analytics pipeline (4 days)
+
 - [ ] `ctx.waitUntil` + Queue send; consumer batch insert into D1
 - [ ] Idempotent consumer via event id (queue can redeliver)
 - [ ] Cron: hourly rollup, daily prune, reconcile counts
 - [ ] Test: 1,000 queued clicks → exact rollup totals; replay-safe
 
 ### M3 — Abuse + privacy (3 days)
+
 - [ ] Per-IP and per-slug token buckets (KV/Durable Object if needed)
 - [ ] Bot heuristic with a documented false-positive policy
 - [ ] Salted IP hashing, retention policy, no raw IP storage
 - [ ] Test: burst 500 rps from one IP → 429 with `Retry-After`
 
 ### M4 — Dashboard + launch (3 days)
+
 - [ ] Next.js dashboard reading rollups (no raw event scans)
 - [ ] OpenAPI + typed client; README with cost table and latency chart
 - [ ] Demo video; short write-up on edge tradeoffs (eventual consistency, KV limits)
