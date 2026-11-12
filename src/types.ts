@@ -17,4 +17,5 @@ export interface Env {
   ADMIN_TOKEN: string;
   IP_HASH_SALT: string;
   ENVIRONMENT?: string;
+  TEST_MIGRATIONS?: Array<{ name: string; queries: string[] }>;
 }
