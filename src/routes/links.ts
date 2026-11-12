@@ -13,6 +13,7 @@ import {
 } from "../db/queries";
 import { toLinkDto } from "../db/types";
 import { clearNegative, writeThroughLink } from "../lib/cache";
+import analyticsRoutes from "./analytics";
 
 const links = new Hono<{ Bindings: Env }>();
 
@@ -22,6 +23,8 @@ links.use("*", async (c, next) => {
   }
   await next();
 });
+
+links.route("/", analyticsRoutes);
 
 interface CreateBody {
   target: string;
