@@ -1,0 +1,5 @@
+{
+  "phishing.example": "documentation placeholder for a known-bad domain",
+  "malware.example": "documentation placeholder for a known-bad domain",
+  "scam.example": "documentation placeholder for a known-bad domain"
+}

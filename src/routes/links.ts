@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { Env } from "../types";
 import { isAuthorized } from "../lib/auth";
 import { generateSlug, isValidSlug, isValidTarget, SLUG_PATTERN } from "../lib/slugs";
+import { isBlockedTarget } from "../lib/target-blocklist";
 import { hashPassword } from "../lib/password";
 import {
   createLink,
@@ -46,6 +47,9 @@ function parseCreateBody(
 
   if (typeof target !== "string" || !isValidTarget(target)) {
     return { ok: false, error: "target must be an absolute http(s) URL" };
+  }
+  if (isBlockedTarget(target)) {
+    return { ok: false, error: "target domain is blocked" };
   }
   if (slug !== undefined) {
     if (typeof slug !== "string" || !SLUG_PATTERN.test(slug)) {
@@ -93,6 +97,9 @@ function parseUpdateBody(
   if (target !== undefined) {
     if (typeof target !== "string" || !isValidTarget(target)) {
       return { ok: false, error: "target must be an absolute http(s) URL" };
+    }
+    if (isBlockedTarget(target)) {
+      return { ok: false, error: "target domain is blocked" };
     }
     value.target = target;
   }
