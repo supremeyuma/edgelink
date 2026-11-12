@@ -47,11 +47,23 @@ indicative, not edge numbers. Deviation from the plan: Cloudflare KV rejects
 
 ## G3 — Analytics pipeline, rollups, retention (M2)
 
-- [ ] `waitUntil` + queue send, idempotent consumer
-- [ ] Hourly recompute rollups, daily prune, analytics API
-- [ ] 1,000-click exactness and replay-safe tests
+- [x] `waitUntil` + queue send, idempotent consumer
+- [x] Hourly recompute rollups, daily prune, analytics API
+- [x] 1,000-click exactness and replay-safe tests
 
-**Gate evidence:** _pending_
+**Gate evidence:** `pnpm run verify` green (45 tests, 6 files); the 1,000-click test passed
+three consecutive runs. Consumer test inserts 1,000 events across three links, replays 100
+and confirms zero inflation, and drops malformed messages. Rollup reruns produce identical
+rows; a late event plus backfill corrects the closed bucket; retention keeps only rows inside
+the 30-day raw / 400-day rollup windows. Analytics API reads rollups only (a contradictory raw
+event is ignored) and returns totals, daily series, top referrers, device split, and bot share.
+
+Plan deviations, recorded honestly:
+- Added `referrer_rollups` and `device_rollups` (migration `0002`) because the plan's
+  `rollups` table cannot answer top-referrer/device queries without scanning raw events.
+- Workers-pool tests exercise producer (`buildClickEvent`) and consumer (`createMessageBatch`)
+  separately; Miniflare's queue auto-delivery is validated end-to-end by the `wrangler dev`
+  walkthrough rather than the pool, matching the plan's documented gap.
 
 ## G4 — Abuse, bots, privacy (M3)
 
