@@ -84,14 +84,13 @@ export async function updateLink(
 }
 
 /** Soft delete: keep the row for analytics, disable redirects, bump version. */
-export async function softDeleteLink(db: D1Database, slug: string): Promise<boolean> {
-  const row = await db
+export async function softDeleteLink(db: D1Database, slug: string): Promise<LinkRow | null> {
+  return db
     .prepare(
-      "UPDATE links SET active = 0, version = version + 1 WHERE slug = ?1 AND active = 1 RETURNING id",
+      "UPDATE links SET active = 0, version = version + 1 WHERE slug = ?1 AND active = 1 RETURNING *",
     )
     .bind(slug)
-    .first<{ id: string }>();
-  return row !== null;
+    .first<LinkRow>();
 }
 
 export interface RedirectResult {
