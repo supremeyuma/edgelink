@@ -11,6 +11,8 @@ export const adminHeaders = {
 
 export async function resetDb(): Promise<void> {
   await testEnv.DB.batch([
+    testEnv.DB.prepare("DELETE FROM device_rollups"),
+    testEnv.DB.prepare("DELETE FROM referrer_rollups"),
     testEnv.DB.prepare("DELETE FROM rollups"),
     testEnv.DB.prepare("DELETE FROM click_events"),
     testEnv.DB.prepare("DELETE FROM links"),

@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "migrate:local": "wrangler d1 migrations apply edgelink --local",
     "bench": "tsx scripts/bench.ts",
+    "backfill": "tsx scripts/backfill.ts",
     "seed": "tsx scripts/seed.ts",
     "verify": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/verify.ps1"
   },

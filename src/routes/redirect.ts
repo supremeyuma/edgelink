@@ -10,6 +10,7 @@ import {
   warmLink,
   type CachedLink,
 } from "../lib/cache";
+import { buildClickEvent } from "../lib/click";
 
 const redirect = new Hono<{ Bindings: Env }>();
 
@@ -89,6 +90,20 @@ redirect.get("/:slug", async (c) => {
   if (!claimed) {
     return statusResponse(c, 410, cache);
   }
+
+  // Analytics never blocks the redirect. A queue failure is logged, not
+  // surfaced: the link still resolves and the cap counter stays authoritative.
+  const request = c.req.raw;
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        const event = await buildClickEvent(request, claimed.id, c.env);
+        await c.env.CLICKS.send(event);
+      } catch (error) {
+        console.error(JSON.stringify({ event: "queue.send_failed", message: String(error) }));
+      }
+    })(),
+  );
 
   return c.body(null, 302, {
     Location: claimed.target,

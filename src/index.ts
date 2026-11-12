@@ -4,6 +4,9 @@ import { RateLimiter } from "./durable/rate-limiter";
 import healthRoutes from "./routes/health";
 import linkRoutes from "./routes/links";
 import redirectRoutes from "./routes/redirect";
+import adminRoutes from "./routes/admin";
+import { handleQueue } from "./consumer";
+import { handleScheduled } from "./cron";
 
 export { RateLimiter };
 
@@ -21,6 +24,7 @@ app.use("*", async (c, next) => {
 
 app.route("/", healthRoutes);
 app.route("/v1/links", linkRoutes);
+app.route("/v1/admin", adminRoutes);
 app.route("/", redirectRoutes);
 
 app.notFound((c) => {
@@ -37,10 +41,10 @@ app.onError((error, c) => {
 
 export default {
   fetch: app.fetch,
-  async queue(_batch: MessageBatch<ClickEvent>, _env: Env): Promise<void> {
-    // Implemented in Phase G3.
+  async queue(batch: MessageBatch<ClickEvent>, env: Env): Promise<void> {
+    await handleQueue(batch, env);
   },
-  async scheduled(_controller: ScheduledController, _env: Env): Promise<void> {
-    // Implemented in Phase G3.
+  async scheduled(controller: ScheduledController, env: Env): Promise<void> {
+    await handleScheduled(controller, env);
   },
 };
