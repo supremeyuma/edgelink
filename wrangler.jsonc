@@ -4,6 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-01-01",
   "observability": { "enabled": true },
+  "vars": {
+    "RATE_LIMIT_PER_MIN": "60",
+    "RATE_LIMIT_BURST": "30",
+  },
   "d1_databases": [
     {
       "binding": "DB",
